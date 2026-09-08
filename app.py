@@ -15,6 +15,7 @@ st.markdown("""
     h3 {color: #E0E0E0;}
     [data-testid="metric-container"] {background-color: #1E2329; padding: 15px; border-radius: 10px; border-left: 5px solid #FF1801;}
     .stTabs [data-baseweb="tab-list"] {gap: 24px;}
+    .phase-box {border-radius:5px; padding:15px; color:white; text-align:center; font-weight:bold; margin-bottom:10px;}
     .stTabs [data-baseweb="tab"] {height: 50px; white-space: pre-wrap; background-color: #1E2329; border-radius: 5px 5px 0px 0px; padding: 10px 20px; color: white;}
     .stTabs [aria-selected="true"] {background-color: #FF1801 !important; color: white;}
     </style>
@@ -59,8 +60,13 @@ else:
         
         tel2['Acceleration'] = tel2['Speed'].diff().fillna(0)
         X = tel2[['Speed', 'Acceleration']].values
+        
         kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-        tel2['Phase_Pilotage'] = kmeans.fit_predict(X)
+        tel2['Cluster_Raw'] = kmeans.fit_predict(X) 
+
+        idx_sorted_by_speed = tel2.groupby('Cluster_Raw')['Speed'].mean().sort_values().index
+        mapping = {idx_sorted_by_speed[0]: 0, idx_sorted_by_speed[1]: 1, idx_sorted_by_speed[2]: 2}
+        tel2['Phase_Pilotage'] = tel2['Cluster_Raw'].map(mapping)
         
         col3.metric(label=" Statut Modèle", value="KMeans Opérationnel", delta="3 Clusters", delta_color="normal")
         st.markdown("<br>", unsafe_allow_html=True)
@@ -83,9 +89,12 @@ else:
             st.plotly_chart(fig, use_container_width=True)
 
         with tab2:
+            custom_colors = ["#FF1801", "#FFD700", "#00FF00"] 
+            
             fig_map = px.scatter(
                 tel2, x="X", y="Y", color="Phase_Pilotage", 
-                color_continuous_scale="turbo"
+                color_continuous_scale=custom_colors, 
+                title=f"Zones de pilotage identifiées par l'IA ({pilote_2})"
             )
             fig_map.update_layout(
                 template="plotly_dark",
@@ -109,6 +118,7 @@ else:
                 st.success("🟢 Phase 3 : Accélération")
             st.markdown("---")
             st.write(" *Coaching :* Localisez les points rouges sur le tracé pour identifier les zones de freinage fort.")
+
 
     except Exception as e:
         st.error(f"Erreur technique : {e}")
